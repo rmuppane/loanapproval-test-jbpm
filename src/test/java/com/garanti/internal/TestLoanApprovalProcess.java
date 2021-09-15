@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.junit.Test;
+import org.kie.api.runtime.KieSession;
 
 import io.cucumber.java.After;
 import io.cucumber.java.Before;
@@ -109,4 +110,6 @@ public class TestLoanApprovalProcess extends JbpmTestUtil {
         // Assert process completed
         assertProcessInstanceCompleted(getProcessInstance().getId());
     }
+
+	
 }

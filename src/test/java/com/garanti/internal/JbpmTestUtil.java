@@ -19,13 +19,10 @@ import org.kie.internal.runtime.manager.context.EmptyContext;
 import com.garanti.loanapproval.Person;
 
 public class JbpmTestUtil extends JbpmJUnitBaseTestCase {
-    private RuntimeManager runtimeManager;
-    private RuntimeEngine runtimeEngine;
-    private KieSession kieSession;
+    
+	private RuntimeManager runtimeManager;
     private ProcessInstance processInstance;
     private String processId;
-
-    private TaskService taskService;
 
     private Map<String, Object> processParams = new HashMap<>();
 
@@ -35,57 +32,38 @@ public class JbpmTestUtil extends JbpmJUnitBaseTestCase {
 
     public void initialize(List<String> bpmnFiles) {
         runtimeManager = createRuntimeManager(bpmnFiles.toArray(new String[bpmnFiles.size()]));
-        runtimeEngine = getRuntimeEngine(EmptyContext.get());
-        if (runtimeEngine != null) {
-            kieSession = runtimeEngine.getKieSession();
-            taskService = runtimeEngine.getTaskService();
-        }
     }
 
     public boolean useProcessDefinition(String processId) {
         this.processId = processId;
-        if (kieSession == null) {
-            return false;
-        }
-        KieBase kieBase = kieSession.getKieBase();
-        if (kieBase == null) {
-            return false;
-        }
-        Process process = kieBase.getProcess(processId);
-        if (process == null) {
-            return false;
+        KieSession kieSession; 
+        RuntimeEngine runtimeEngine = getRuntimeEngine(EmptyContext.get());
+        if (runtimeEngine != null) {
+            kieSession = runtimeEngine.getKieSession();
+	        if (kieSession == null) {
+	            return false;
+	        }
+	        KieBase kieBase = kieSession.getKieBase();
+	        if (kieBase == null) {
+	            return false;
+	        }
+	        Process process = kieBase.getProcess(processId);
+	        if (process == null) {
+	            return false;
+	        }
         }
         return true;
     }
 
     public void startProcess() {
-        if (kieSession != null && processId != null) {
-            processInstance = kieSession.startProcess(processId, processParams);
+    	KieSession kieSession; 
+        RuntimeEngine runtimeEngine = getRuntimeEngine(EmptyContext.get());
+        if (runtimeEngine != null) {
+            kieSession = runtimeEngine.getKieSession();
+	        if (kieSession != null && processId != null) {
+	            processInstance = kieSession.startProcess(processId, processParams);
+	        }	
         }
-    }
-
-    public RuntimeManager getRuntimeManager() {
-        return runtimeManager;
-    }
-
-    public void setRuntimeManager(RuntimeManager runtimeManager) {
-        this.runtimeManager = runtimeManager;
-    }
-
-    public RuntimeEngine getRuntimeEngine() {
-        return runtimeEngine;
-    }
-
-    public void setRuntimeEngine(RuntimeEngine runtimeEngine) {
-        this.runtimeEngine = runtimeEngine;
-    }
-
-    public KieSession getKieSession() {
-        return kieSession;
-    }
-
-    public void setKieSession(KieSession kieSession) {
-        this.kieSession = kieSession;
     }
 
     public ProcessInstance getProcessInstance() {
@@ -130,45 +108,60 @@ public class JbpmTestUtil extends JbpmJUnitBaseTestCase {
     }
     
     public boolean completeHumanTask (String taskName, String userId, Map<String, String> data) {
-        List<TaskSummary> tasks = taskService.getTasksAssignedAsPotentialOwner(userId, "en-UK");
-        TaskSummary found = tasks.stream().filter(task -> task.getName().equals(taskName)).findAny().orElse(null);
-        if (found != null) {
-            switch (found.getStatus()) {
-                case Ready:
-                    taskService.claim(found.getId(), userId);
-                case Reserved:
-                    taskService.start(found.getId(), userId);
-                case InProgress: {
-                	final Map<String, Object> parameters = new HashMap<>();
-	                	if(taskName.equals("Data Entry")) {
-	                         final Person person = new Person();
-	                         person.setFirstName(data.get("firstName"));
-	                         person.setLastName(data.get("lastName"));
-	                         person.setDob(data.get("DOB"));
-	                         person.setCreditScore(Float.parseFloat(data.get("CreditScore")));
-	                         person.setIncome(Integer.parseInt(data.get("income")));
-	                         parameters.put("person", person);
-	                    } 
-	                	else if(taskName.equals("Approval Documentation")) {
-	                     	
-	                    } 
-	                    else if(taskName.equals("Reject Documentation")) {
-	                    	 //
-	                    }
-                    	taskService.complete(found.getId(), userId, parameters);
-                	}
-                    return true;
-                default:
-                    return false;
-            }
+    	RuntimeEngine runtimeEngine = getRuntimeEngine(EmptyContext.get());
+        if (runtimeEngine != null) {
+        	TaskService taskService = runtimeEngine.getTaskService();
+	        List<TaskSummary> tasks = taskService.getTasksAssignedAsPotentialOwner(userId, "en-UK");
+	        TaskSummary found = tasks.stream().filter(task -> task.getName().equals(taskName)).findAny().orElse(null);
+	        if (found != null) {
+	            switch (found.getStatus()) {
+	                case Ready:
+	                    taskService.claim(found.getId(), userId);
+	                case Reserved:
+	                    taskService.start(found.getId(), userId);
+	                case InProgress: {
+	                	final Map<String, Object> parameters = new HashMap<>();
+		                	if(taskName.equals("Data Entry")) {
+		                         final Person person = new Person();
+		                         person.setFirstName(data.get("firstName"));
+		                         person.setLastName(data.get("lastName"));
+		                         person.setDob(data.get("DOB"));
+		                         person.setCreditScore(Float.parseFloat(data.get("CreditScore")));
+		                         person.setIncome(Integer.parseInt(data.get("income")));
+		                         parameters.put("person", person);
+		                    } 
+		                	else if(taskName.equals("Approval Documentation")) {
+		                     	
+		                    } 
+		                    else if(taskName.equals("Reject Documentation")) {
+		                    	 //
+		                    }
+	                    	taskService.complete(found.getId(), userId, parameters);
+	                	}
+	                    return true;
+	                default:
+	                    return false;
+	            }
+	        }
         }
         return false;
     }
     
     private boolean hasHumanTaskStatus (String taskName, String userId, Status status) {
+    	RuntimeEngine runtimeEngine = getRuntimeEngine(EmptyContext.get());
+        TaskService taskService = runtimeEngine.getTaskService();
         List<TaskSummary> tasks = taskService.getTasksAssignedAsPotentialOwner(userId, "en-UK");
         TaskSummary found = tasks.stream().filter(task -> task.getName().equals(taskName)).findAny().orElse(null);
         return found != null ? found.getStatus() == status : false;
     }
+    
+    public KieSession getKieSession() {
+    	KieSession kieSession; 
+	    RuntimeEngine runtimeEngine = getRuntimeEngine(EmptyContext.get());
+	    kieSession = runtimeEngine.getKieSession();
+	    return kieSession;
+	}
+    
+   
 
 }
